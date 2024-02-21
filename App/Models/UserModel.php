@@ -8,23 +8,19 @@ use Hitek\Slimez\Core\BaseModel;
 use Hitek\Slimez\Core\Security;
 use Hitek\Slimez\Core\Exceptions;
 
-class UserModel
+class UserModel extends BaseModel
 {
     protected $userId;
     protected $username;
     protected $email;
     protected $password;
-    protected $fname; // First Name
-    protected $mname; // Middle Name
-    protected $lname; // Last Name
     protected $phone;
-    protected $country;
-    protected $address;
-    protected $gender;
     protected $status;
+    protected $profileImage;
     protected $timestamp;
+    protected $otpCode;
 
-    protected $tableNames = array('users');
+    protected $tableNames = array('users','user_meta','user_personal_info','vpn_subscription','otpRecord');
 
     // Assuming other necessary properties and methods exist...
 
@@ -35,11 +31,34 @@ class UserModel
         return $this->userId;
     }
 
+    public function setOtpCode($otpCode)
+    {
+        $this->otpCode = $otpCode;
+        return $this;
+    }
+
+    public function getOtpCode()
+    {
+        return $this->otpCode;
+    }
+
     public function setUserId($userId)
     {
         $this->userId = $userId;
         return $this;
     }
+
+    public function getProfileImage()
+    {
+        return $this->profileImage;
+    }
+
+    public function setProfileImage($profileImage)
+    {
+        $this->profileImage = $profileImage;
+        return $this;
+    }
+
 
     public function getUsername()
     {
@@ -74,39 +93,6 @@ class UserModel
         return $this;
     }
 
-    public function getFname()
-    {
-        return Security::decryption(Security::insertForwardSlashed($this->fname));
-    }
-
-    public function setFname($fname)
-    {
-        $this->fname = Security::replaceForwardSlashed(Security::encryption(Security::removeSpaces($fname)));
-        return $this;
-    }
-
-    public function getMname()
-    {
-        return Security::decryption(Security::insertForwardSlashed($this->mname));
-    }
-
-    public function setMname($mname)
-    {
-        $this->mname = Security::replaceForwardSlashed(Security::encryption(Security::removeSpaces($mname)));
-        return $this;
-    }
-
-    public function getLname()
-    {
-        return Security::decryption(Security::insertForwardSlashed($this->lname));
-    }
-
-    public function setLname($lname)
-    {
-        $this->lname = Security::replaceForwardSlashed(Security::encryption(Security::removeSpaces($lname)));
-        return $this;
-    }
-
     public function getPhone()
     {
         return Security::decryption(Security::insertForwardSlashed($this->phone));
@@ -117,40 +103,6 @@ class UserModel
         $this->phone = Security::replaceForwardSlashed(Security::encryption(Security::formatMobile($phone)));
         return $this;
     }
-
-    public function getCountry()
-    {
-        return $this->country;
-    }
-
-    public function setCountry($country)
-    {
-        $this->country = $country;
-        return $this;
-    }
-
-    public function getAddress()
-    {
-        return $this->address;
-    }
-
-    public function setAddress($address)
-    {
-        $this->address = $address;
-        return $this;
-    }
-
-    public function getGender()
-    {
-        return $this->gender;
-    }
-
-    public function setGender($gender)
-    {
-        $this->gender = $gender;
-        return $this;
-    }
-
     public function getStatus()
     {
         return $this->status;
@@ -190,23 +142,15 @@ class UserModel
     public function deleteQuery(bool $isSoftDelete = true)
     {
         try {
-            $whereCondition = !empty($this->userId) ? "userId = ?" : (!empty($this->email) ? "email = ?" : null);
-            $updateValue = !empty($this->userId) ? $this->userId : $this->email;
-
-            if ($whereCondition === null) {
-                // Handle error: No identifier provided
-                return false;
-            }
-
             if ($isSoftDelete) {
                 return BaseModel::query()
                     ->update(tableName: $this->tableNames[0], dataValues: ["status" => 5])
-                    ->where($whereCondition, [$updateValue])
+                    ->where("userId = ? || email = ?", [$this->userId, $this->email])
                     ->save();
             } else {
                 return BaseModel::query()
                     ->delete(tableName: $this->tableNames[0])
-                    ->where($whereCondition, [$updateValue])
+                    ->where("userId = ? || email = ?", [$this->userId, $this->email])
                     ->save();
             }
         } catch (Exception $e) {
@@ -214,21 +158,16 @@ class UserModel
         }
     }
 
-
-
     // update the users table 
     public function updateQuery()
     {
         try {
             $updateData = array_filter([
-                "fname" => $this->fname,
-                "mname" => $this->mname,
-                "lname" => $this->lname,
-                "address" => $this->address,
-                "gender" => $this->gender,
-                "email" => $this->email,
                 "phone" => $this->phone,
+                "password" => $this->password,
                 "username" => $this->username,
+                "profileImage"=> $this->profileImage,
+                "status"=> $this->status,
                 "timestamp" => $this->timestamp
             ]);
 
@@ -236,11 +175,9 @@ class UserModel
                 return false; // No data to update
             }
 
-            $updateValue = !empty($this->userId) ? $this->userId : $this->email;
-
             return BaseModel::query()
                 ->update(tableName: $this->tableNames[0], dataValues: $updateData)
-                ->where("userId = ? || email = ?", [$updateValue, $updateValue])
+                ->where("userId = ? || email = ?", [$this->userId, $this->email])
                 ->save();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);
@@ -249,19 +186,40 @@ class UserModel
 
 
     //    insert data to table
-    public function insertQuery()
+    public function insertQuery($isTransaction = false)
     {
+
+        $userData = array_filter(['userId' => $this->userId, 'email' => $this->email, 'password' => $this->password]);
+        $insertMetaData = array_filter(['metaId' => Security::genUuid(), 'userId' => $this->userId]);
+        $insertPersonalInfo = array_filter(['pInfoId' => Security::genUuid(),'userId' => $this->userId]);
+        $vpnsubscription = array_filter(['subId' => Security::genUuid(),'userId' => $this->userId]);
+        $otpCode = array_filter(['otpId' => Security::genUuid(),'userId' => $this->userId, 'type'=>'register', 'otpCode' => $this->otpCode]);
+
         try {
-            $dbTransactionData = [
-                $this->tableNames,
-                [
-                    ['userId' => $this->userId, 'email' => $this->email, 'password' => $this->password],
-                    // Include other related table data as needed
-                ]
-            ];
+            /**
+             * transaction insert
+             */
+            if ($isTransaction) {
+                $tranData = [
+                    /**tables */
+                     $this->tableNames,
+                     [
+                        $userData,
+                        /**first table data */
+                        $insertMetaData,
+                        /**second table data */
+                        $insertPersonalInfo,
+                        /** */
+                        $vpnsubscription,
+                        /** */
+                        $otpCode
+                    ],
+                ];
+                return BaseModel::query()->insertDbTransact($tranData)->save();
+            }
 
             return BaseModel::query()
-                ->insertDbTransact(transactionData: $dbTransactionData)
+                ->insert(tableName: $this->tableNames[0], query: $userData)
                 ->save();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);

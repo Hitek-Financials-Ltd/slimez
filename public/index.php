@@ -1,5 +1,5 @@
 <?php
-
+session_start();
 /**
  * Author: Oaad Global
  * Developer: Hitek Financials Ltd
