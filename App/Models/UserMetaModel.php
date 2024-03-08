@@ -110,11 +110,16 @@ class UserMetaModel extends BaseModel
     public function updateQuery()
     {
 
+        
         $updateData = array_filter([
             "ipAddress" => $this->ipAddress,
             "device" => $this->device,
-            "isOnline" => $this->isOnline
+            "isOnline" => $this->isOnline,
         ]);
+
+        if($this->device == 0){
+            $updateData["device"] = $this->device;
+        }
 
         if (empty($updateData)) {
             return false; // No data to update

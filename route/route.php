@@ -9,6 +9,7 @@
  * Description: Slimez.
  */
 
+use Hitek\Slimez\App\Controllers\PaymentsController;
 use Hitek\Slimez\App\Controllers\UserController;
 use Hitek\Slimez\App\Controllers\VtuController;
 use Hitek\Slimez\App\Controllers\VpnController;
@@ -52,3 +53,7 @@ Router::post("/vpn/configs", [VpnController::class, 'configs']);
 
 //get packages route
 Router::get("/vpn/packages", [VpnController::class, 'packages']);
+
+/**process payments */
+Router::post("/transactions/events", [PaymentsController::class, 'webhook']);
+Router::post("/transaction/payment", [PaymentsController::class, 'getPayment']);

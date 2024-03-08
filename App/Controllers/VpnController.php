@@ -26,11 +26,11 @@ class VpnController extends BaseController
             return;
         }
 
-        if (Session::get('users')) {
+        if (!Session::get('user')) {
             // User already logged in
             echo Responses::json([
-                'status' => 'failed',
-                'message' => 'Account logged in already',
+                'status' => 'loggedout',
+                'message' => 'Account not logged in, please login',
             ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
             return;
         }
@@ -137,12 +137,12 @@ class VpnController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == 'GET') {
 
             /**check if the user is already logged in and then log him out */
-            if (!Session::get('users')) {
-                /**return response to client */
+            if (!Session::get('user')) {
+                // User already logged in
                 echo Responses::json([
-                    'status' => 'failed',
-                    'message' => 'Account logged in already',
-                ], Env::WRONG_INPUT_METHOD);
+                    'status' => 'loggedout',
+                    'message' => 'Account not logged in, please login',
+                ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
 
@@ -152,9 +152,10 @@ class VpnController extends BaseController
              */
             $packagesObj->setStatus(1);
 
-            $packages = $packagesObj->selectQuery(isAll: true);
+            $packageResponse = $packagesObj->selectQuery(true);
 
-            echo Responses::json($packages, Env::SUCCESS_METHOD);
+
+            echo Responses::json(['packages'=>$packageResponse], Env::SUCCESS_METHOD);
             return;
         }
 

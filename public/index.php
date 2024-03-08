@@ -1,5 +1,5 @@
 <?php
-session_start();
+
 /**
  * Author: Oaad Global
  * Developer: Hitek Financials Ltd
@@ -10,6 +10,18 @@ session_start();
  */
 
 require "../vendor/autoload.php";
+use Hitek\Slimez\Configs\Env;
+
+session_start();
+header("Content-Type: application/json");
+// Set the appropriate headers for handling sessions and cookies
+header('Control-Allow-Origin: *');
+header('Access-Control-Allow-Origin: *'); // Adjust this according to your needs
+header('Access-Control-Allow-Credentials: true'); // Allow credentials (cookies)
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE,PUT, PATCH'); // Adjust allowed methods
+header('Access-Control-Allow-Headers: Content-Type, *'); // Adjust allowed headers
+
+setCookie(Env::SYSTEM_NAME, session_id(),  time() + (3600 * Env::COOKIE_EXPIRATION_TIME_IN_HOURS), '/','monolith-php.kvpnsmart.com');
 
 use \Hitek\Slimez\Core\Router;
 

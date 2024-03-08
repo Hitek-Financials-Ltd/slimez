@@ -10,6 +10,7 @@ class VpnSubscriptionModel extends BaseModel
 {
     protected $subId;
     protected $userId;
+    protected $subType;
     protected $duration;
     protected $amount;
     protected $startDate;
@@ -25,6 +26,10 @@ class VpnSubscriptionModel extends BaseModel
     public function getUserId()
     {
         return $this->userId;
+    }
+    public function getSubType()
+    {
+        return $this->subType;
     }
     public function getDuration()
     {
@@ -52,6 +57,11 @@ class VpnSubscriptionModel extends BaseModel
     public function setUserId($userId): self
     {
         $this->userId = $userId;
+        return $this;
+    }
+    public function setSubType($subType): self
+    {
+        $this->subType = $subType;
         return $this;
     }
     public function setDuration($duration): self
@@ -100,6 +110,7 @@ class VpnSubscriptionModel extends BaseModel
                 'subId' => $this->subId,
                 'userId' => $this->userId,
                 'duration' => $this->duration,
+                'subType' => $this->subType,
                 'amount' => $this->amount,
                 'startDate' => $startDate->format('Y-m-d H:i:s'),
                 'endDate' => $endDate->format('Y-m-d H:i:s'),
@@ -124,6 +135,7 @@ class VpnSubscriptionModel extends BaseModel
             $updateData = array_filter([
                 'userId' => $this->userId,
                 'duration' => $this->duration,
+                'subType' => $this->subType,
                 'amount' => $this->amount,
                 'startDate' => $startDate->format('Y-m-d H:i:s'),
                 'endDate' => $endDate->format('Y-m-d H:i:s'),

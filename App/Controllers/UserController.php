@@ -20,6 +20,7 @@ use Hitek\Slimez\Core\Messaging;
 use Hitek\Slimez\Core\Session;
 use Hitek\Slimez\Core\FileUploader;
 use Exception;
+use Hitek\Slimez\Core\Cookie;
 
 class UserController extends BaseController
 {
@@ -35,6 +36,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account logged in already',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -50,6 +52,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong email, please enter a valid email to proceed',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -60,6 +63,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong password pattern, should not be less than 6, contains uppercase characters, number and special characters',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -103,90 +107,90 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'User already exists, the email or phone number is already in use',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
 
             /**create the account */
-            // $created = $userObj->insertQuery(isTransaction: true);
+            $created = $userObj->insertQuery(true);
 
-            // /**
-            //  * check if the account inserted successfully
-            //  */
-            // if (!$created) {
-            //     /**return response to client */
-            //     echo Responses::json([
-            //         'status' => 'failed',
-            //         'message' => 'Error creating account, please try again',
-            //     ], Env::WRONG_INPUT_METHOD);
-            //     return;
-            // }
-            // /**
-            //  * select users from the table
-            //  */
-            // $user = $userObj->selectQuery();
-            // /**set all the user model required in this model */
+            /**
+             * check if the account inserted successfully
+             */
+            if (!$created) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'Error creating account, please try again',
+                    'data' => []
+                ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+            /**
+             * select users from the table
+             */
+            $user = $userObj->selectQuery();
+            /**set all the user model required in this model */
 
-            // if (empty($user)) {
-            //     /**return response to client */
-            //     echo Responses::json([
-            //         'status' => 'failed',
-            //         'message' => 'Oops! Something went wrong',
-            //     ], Env::SERVER_ERROR_METHOD);
-            //     return;
-            // }
+            if (empty($user)) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'Oops! Something went wrong',
+                    'data' => []
+                ], Env::SERVER_ERROR_METHOD);
+                return;
+            }
 
             /**
              * send email notification
              */
             /**setting up email */
             $messageBody = "
-                 <h3>Hi " . ucfirst(explode("@", $email)[0]) . "</h3>
+            <div style='width: 100%; position: relative'>
+              <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
+              <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", $email)[0]) . "</h2>
                  <p>You have successfully created an account with us at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", please use the otp below to activate your account</p>
-                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f1f1f1;'>" . $otp . " </strong></p>
-                 ";
-
-            
-
+                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f8f8f8; color: #000000 !important;padding: 5px 30px;'>" . $otp . " </strong></p>
+                 
+              </section>
+              <br>
+              <section style='width: 100%; position: relative; padding: 20px 0; text-align: center; '>
+              <p>&copy; " . date('Y', time()) . " | " . Env::COMPANY_NAME . "</p>
+              </section>
+            </div>
+            ";
             try {
-
-                $emailSent = Messaging::sendCurlEmail(
-                    sender:Env::SMTP_USERNAME,
-                    receiver: $email,
+                $emailSent = Messaging::sendEmail(
+                    sender: Env::SMTP_USERNAME,
+                    recipients: [$email],
                     message: $messageBody,
                     companyName: Env::COMPANY_NAME,
                     title: 'Account Created successfully',
                 );
-                // /**set the server credentials */
-                // $emailSender = new AdvancedEmailSender(
-                //     Env::SMTP_SERVER,
-                //     Env::SMTP_PORT,
-                //     Env::SMTP_USERNAME,
-                //     Env::SMTP_PASSWORD,
-                //     "tls"
-                // );
-                // /**send the email */
-                // $emailSent = $emailSender->sendEmail(
-                //     Env::SMTP_USERNAME,
-                //     $email,
-                //     'Account Created successfully',
-                //     $messageBody
-                // );
-                /**check if the email was sent */
+                /**return response to client */
                 if ($emailSent) {
-                    /**return response to client */
                     echo Responses::json([
                         'status' => 'success',
                         'message' => 'User was successfully created',
+                        'data' => [],
                         'userId' => $userIdGen
                     ], Env::USER_CREATED);
-                    return;
+                } else {
+                    echo Responses::json([
+                        'status' => 'success',
+                        'message' => 'User was successfully created, email sending error, contact admin',
+                        'data' => [],
+                        'userId' => $userIdGen
+                    ], Env::USER_CREATED);
                 }
                 return;
             } catch (Exception $e) {
                 echo Responses::json([
                     'status' => 'success',
-                    'message' => 'User was successfully created with error sending email, contact customer service for help '.$e->getMessage(),
+                    'message' => 'User was successfully created with error sending email, contact customer service for help ',
+                    'data' => []
                 ], Env::USER_CREATED);
                 return;
             }
@@ -197,6 +201,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong request method, only POST method is supported for this endpoint',
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
         return;
     }
@@ -211,24 +216,64 @@ class UserController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             /**check if the user is already logged in and then log him out */
-            if (Session::get('users')) {
+            if (Session::get('user')) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account logged in already',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
 
             /**get post data */
-            $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
+            $email = isset($_POST['email']) ? Security::kenProtectFunc($_POST['email']) : '';
             $otp = isset($_POST['otp']) ? Security::kenProtectFunc($_POST['otp']) : '';
             /** check if email is correct*/
 
+            if (empty($email) || empty($otp)) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'You cannot submit an empty form',
+                    'data' => []
+                ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+
+            if (!Security::emailRegularExpression($email)) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'Wrong email address',
+                    'data' => []
+                ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+
+            $userObj = new UserModel();
+
+            /**update the account */
+            $updated = $userObj->setEmail($email)
+                ->setStatus(1);
+
+            $userQuery = $userObj->selectQuery();
+
             $getOtpObj = new OtpRecordModel();
 
-            $otpData = $getOtpObj->setUserId($userId)
-                ->selectQuery();
+            if(empty($userQuery)){
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'User not found',
+                    'data' => []
+                ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+            
+            $getOtpObj->setUserId($userQuery['userId']);
+
+            $otpData =  $getOtpObj->selectQuery();
 
             /**check if the user was otp was found */
             if (empty($otpData)) {
@@ -236,24 +281,19 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Incorrect otp code, please check email to enter the correct otp or resend the otp',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-            if ($otpData['otpCode'] != $otp || $otpData['type'] != "register") {
-                /**return response to client */
+
+            if (isset($userQuery) && $userQuery['status'] != 0) {
                 echo Responses::json([
                     'status' => 'failed',
-                    'message' => 'Incorrect otp code, please check email to enter the correct otp or resend the otp',
+                    'message' => 'Account activated already',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-
-
-            $userObj = new UserModel();
-
-            /**update the account */
-            $updated = $userObj->setUserId($userId)
-                ->setStatus(1);
             /**update otp */
             $userObj->updateQuery();
             /**
@@ -263,13 +303,14 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'success',
                     'message' => 'Account activated successfully',
+                    'data' => []
                 ], Env::SUCCESS_METHOD);
                 return;
             }
             echo Responses::json([
                 'status' => 'failed',
                 'message' => 'Failed to activate account',
-
+                'data' => []
             ], Env::NOT_ACCEPTABLE);
             return;
         }
@@ -277,7 +318,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only post method is allowed with {email and password} parameters',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -290,12 +331,24 @@ class UserController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             /**check if the user is already logged in and then log him out */
+            // Session::sessDelete('user');
             if (Session::get('user')) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account logged in already',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+
+            if (Auth::getBearerToken() != Env::API_TOKEN) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'Forbidden to access this page, wrong Access token',
+                    'data' => []
+                ], Env::FORBIDDEN_METHOD);
                 return;
             }
 
@@ -312,6 +365,7 @@ class UserController extends BaseController
                     echo Responses::json([
                         'status' => 'failed',
                         'message' => 'Wrong email, please enter a valid email to proceed',
+                        'data' => []
                     ], Env::WRONG_INPUT_METHOD);
                     return;
                 }
@@ -324,6 +378,7 @@ class UserController extends BaseController
                     echo Responses::json([
                         'status' => 'failed',
                         'message' => 'Wrong username, please enter a valid username to proceed',
+                        'data' => []
                     ], Env::WRONG_INPUT_METHOD);
                     return;
                 }
@@ -333,6 +388,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong number entered, please enter a valid number',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -343,11 +399,13 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong password pattern, password must contain only letters, numbers and special characters',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
 
             $userObj = new UserModel();
+            
 
             /**set the user email and password*/
 
@@ -356,13 +414,13 @@ class UserController extends BaseController
 
             /**get the user details */
             $user = $userObj->selectQuery();
-
             /**check if the user already exist */
             if (empty($user)) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong email or password',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -373,6 +431,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'You no longer own account with us as the user has deleted their account. To regain your account please contact our customer service',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -383,6 +442,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong email or password',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -391,8 +451,9 @@ class UserController extends BaseController
             if ($user['status'] <= '0') {
                 /**return response to client */
                 echo Responses::json([
-                    'status' => 'failed',
+                    'status' => 'not_activated',
                     'message' => 'Account not activated, please check your inbox and spam folder to activate your account via the email sent to you',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -403,6 +464,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account is on hold, please waith for 2 minutes and try again',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -412,6 +474,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account suspended, please contact support',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -422,29 +485,38 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Account blocked, please contact support',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
-
-            if (Auth::getBearerToken() != Env::API_TOKEN) {
-                /**return response to client */
-                echo Responses::json([
-                    'status' => 'failed',
-                    'message' => 'Forbidden to access this page',
-                ], Env::FORBIDDEN_METHOD);
-                return;
-            }
-
-            /**get the user details */
-            $userData = $userObj->selectQuery();
 
             /**
              * 
              */
             $metaDataObj = new UserMetaModel();
             /** */
-            $metaDataObj->setUserId($userData['userId'])
-                ->setIsOnline(1);
+            $metaDataObj->setUserId($user['userId']);
+
+            $userMetaData = $metaDataObj->selectQuery();
+
+            if(isset($userMetaData['device']) && $userMetaData['device'] >= Env::NUMBER_OF_DEVICES_ALLOW_PER_USER){
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'You have reached the limit number of '.Env::NUMBER_OF_DEVICES_ALLOW_PER_USER.' devices login into your account, please logout from other device and try agin',
+                    'data' => []
+                ], Env::FORBIDDEN_METHOD);
+                return;
+            }
+
+            if(!empty($userMetaData)){
+                
+                  $metaDataObj->setDevice((int)$userMetaData['device']+1)
+            ->setIsOnline('online');
+            }
+            /**get the user details */
+            $userData = $userObj->selectQuery();
+            
             /** */
             $metaDataObj->updateQuery();
             /** */
@@ -455,6 +527,7 @@ class UserController extends BaseController
             $userData['username'] = (string)Security::decryption(Security::insertForwardSlashed($userData['username']));
 
             $userData['profileImage'] = (string)$userData['profileImage'];
+            $userData['status'] = (string)$userData['status'];
             /**
              * remove password from the array
              */
@@ -465,7 +538,7 @@ class UserController extends BaseController
              */
             $userData['token'] = Auth::getBearerToken();
 
-            Session::set('user', $userData);
+            Session::set('user', json_encode($userData));
             /**login was successful */
             echo Responses::json([
                 'status' => 'success',
@@ -477,7 +550,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only post method is allowed with {email and password} parameters',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -491,11 +564,11 @@ class UserController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**check if the user is already logged in and then log him out */
             if (!Session::get('user')) {
-                /**return response to client */
+                // User already logged in
                 echo Responses::json([
-                    'status' => 'logout',
-                    'message' => 'Account not logged in',
-                ], Env::WRONG_INPUT_METHOD);
+                    'status' => 'loggedout',
+                    'message' => 'Account not logged in, please login',
+                ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
 
@@ -504,19 +577,21 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
             /**get post data */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
 
-            $sessionUser = Session::get('user');
+            $sessionUser = json_decode(Session::get('user'),true);
             /**check if the email is equal the session email */
             if ($userId != $sessionUser['userId']) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Not permitted to access this account',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -541,6 +616,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Error with fetching profile data, check account status',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -563,6 +639,7 @@ class UserController extends BaseController
             /*
             *
             */
+
             if (!empty($userVpnFilesObj)) {
                 $vpnConfigsObj->setStatus(1);
                 $vpnConfigs = $vpnConfigsObj->selectQuery(isAll: true);
@@ -620,6 +697,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong request method, only POST method is supported for this endpoint',
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
         return;
     }
@@ -631,14 +709,14 @@ class UserController extends BaseController
     {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**check if the user is already logged in and then log him out */
-            if (!Session::get('user')) {
-                /**return response to client */
-                echo Responses::json([
-                    'status' => 'logout',
-                    'message' => 'Account not logged in',
-                ], Env::WRONG_INPUT_METHOD);
-                return;
-            }
+            // if (!Session::get('user')) {
+            //     // User already logged in
+            //     echo Responses::json([
+            //         'status' => 'loggedout',
+            //         'message' => 'Account not logged in, please login ',
+            //     ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
+            //     return;
+            // }
             /**get post data */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
             /** */
@@ -649,15 +727,17 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
             /** */
-            if ($userSesion['userId'] != $userId) {
+            if (isset($userSesion['userId']) && $userSesion['userId'] != $userId) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'User unidentified',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
@@ -666,17 +746,31 @@ class UserController extends BaseController
             /**
              * set logout
              */
-            $metaDataObj->setUserId(trim($userId))
-                ->setIsOnline(0);
+            $metaDataObj
+            ->setUserId(trim($userId));
             /**update online status */
             /** */
-            Session::sessDelete('user');
-
+            $metaDevices = $metaDataObj->selectQuery();
+            // **all the user devices is offline
+            if(isset($metaDevices['device']) && (int)$metaDevices['device'] == 1){
+                $metaDataObj->setIsOnline('offline')
+                ->setDevice(0);
+            }
+            /**user device online reduced */
+            if(isset($metaDevices['device']) && (int)$metaDevices['device'] > 1){
+                $metaDataObj->setDevice($metaDevices['device']-1);
+            }
+            /**update the meta data */
+            $metaDataObj->updateQuery();
+            /**delete monnfy loginsession */
+            Session::sessDelete("monnify_in");
+            /**detsry the session */
+            Session::destroy();
             /**response message */
             echo Responses::json([
                 'status' => 'success',
                 'message' => 'Logout successfully',
-
+                'data' => [],
             ], Env::SUCCESS_METHOD);
             return;
         }
@@ -684,7 +778,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only GET method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -696,7 +790,7 @@ class UserController extends BaseController
     {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**check if the user is already logged in and then log him out */
-            $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
+            $email = isset($_POST['email']) ? Security::kenProtectFunc($_POST['email']) : '';
             $otpType = isset($_POST['type']) ? Security::kenProtectFunc($_POST['type']) : '';
             $otpPost = isset($_POST['otp']) ? Security::kenProtectFunc($_POST['otp']) : '';
             $title = isset($_POST['title']) ? Security::kenProtectFunc($_POST['title']) : '';
@@ -708,62 +802,84 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
             /** */
-            if ($userSesion['userId'] != $userId) {
+            if (isset($userSesion) && $userSesion['email'] != $email) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'User unidentified',
+                    'data' => []
+                ], Env::WRONG_INPUT_METHOD);
+                return;
+            }
+            /**get user from database */
+            $userObj = new UserModel();
+            /**setters and getters */
+            $userObj->setEmail($email);
+            /**get user */
+            $user = $userObj->selectQuery();
+            if (empty($user)) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'User unidentified',
+                    'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
             /**get OTP */
             $otpDataObj = new OtpRecordModel();
 
-            $otpDataObj->setUserId($userId);
+            $otpDataObj->setUserId($user['userId']);
 
 
             $dbOtp = $otpDataObj->selectQuery();
 
+
+
             if (empty($dbOtp)) {
                 /**return response to client */
                 $otpDataObj->setOtpId(Security::genUuid())
-                    ->setUserId($userId)
+                    ->setUserId($user['userId'])
                     ->setType($otpType)
                     ->setOtpCode($otpPost);
 
                 $otpDataObj->insertQuery();
             } else {
                 /**return response to client */
-                $otpDataObj->setUserId($userId)
+                $otpDataObj->setUserId($user['userId'])
                     ->setType($otpType)
                     ->setOtpCode($otpPost);
                 /**update the row */
                 $otpDataObj->updateQuery();
             }
 
-            /**get user from database */
-            $userObj = new UserModel();
-            /**setters and getters */
-            $userObj->setUserId($userId);
-            /**get user */
-            $user = $userObj->selectQuery();
 
             /**setting up email */
             $messageBody = "
-                 <h3>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h3>
-                 <p>You have successfully created an account with us at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", please use the otp below to activate your account</p>
-                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f1f1f1;'>" . $otpPost . " </strong></p>
-                 ";
-
+            <div style='width: 100%; position: relative'>
+              <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
+              <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
+                 <p>You requested a ".$otpType." OTP code from " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", below is the otp code</p>
+                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:80px,font-weight:bold;background-color: #f8f8f8; color: #000000 !important;padding: 5px 30px;'>" . $otpPost . " </strong></p>
+                 <p>Please ignore this email if you are not the one that requested this code</p>
+                 
+              </section>
+              <br>
+              <section style='width: 100%; position: relative; padding: 20px 0; text-align: center; '>
+              <p>&copy; " . date('Y', time()) . " | " . Env::COMPANY_NAME . "</p>
+              </section>
+            </div>
+            ";
             /**send email */
-            $emailing = Messaging::slimezPHPMailMailer(
+            $emailing = Messaging::sendEmail(
                 sender: Env::SMTP_USERNAME,
                 companyName: Env::COMPANY_NAME,
-                receiver: Security::decryption(Security::insertForwardSlashed($user['email'])),
+                recipients: [Security::decryption(Security::insertForwardSlashed($user['email']))],
                 message: $messageBody,
                 title: $title
             );
@@ -773,6 +889,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Error Sending OTP',
+                    'data' => []
                 ], Env::NOT_ACCEPTABLE);
                 return;
             }
@@ -781,7 +898,7 @@ class UserController extends BaseController
             echo Responses::json([
                 'status' => 'success',
                 'message' => 'OTP sent successfully',
-
+                'data' => []
             ], Env::SUCCESS_METHOD);
             return;
         }
@@ -789,7 +906,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only GET method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -801,7 +918,7 @@ class UserController extends BaseController
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**get post data */
-            $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
+            $email = isset($_POST['email']) ? Security::kenProtectFunc($_POST['email']) : '';
             $newPassword = isset($_POST['newPassword']) ? Security::kenProtectFunc($_POST['newPassword']) : '';
             $otp = isset($_POST['otp']) ? Security::kenProtectFunc($_POST['otp']) : '';
             /** */
@@ -810,13 +927,31 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
+                ], Env::FORBIDDEN_METHOD);
+                return;
+            }
+
+            /**get user from database */
+            $userDataOBj = new UserModel();
+            /**setters and getters */
+            $userDataOBj->setEmail(trim($email));
+            /**seletc the user */
+            $user = $userDataOBj->selectQuery();
+            /**check if there is user found */
+            if (empty($user)) {
+                /**return response to client */
+                echo Responses::json([
+                    'status' => 'failed',
+                    'message' => 'User not found',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
             /**otp model */
             $otpDataObj = new OtpRecordModel();
 
-            $otpDataObj->setUserId($userId);
+            $otpDataObj->setUserId($user['userId']);
 
 
             $dbOtp = $otpDataObj->selectQuery();
@@ -826,6 +961,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -835,25 +971,12 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Wrong OTP Code',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
 
-            /**get user from database */
-            $userDataOBj = new UserModel();
-            /**setters and getters */
-            $userDataOBj->setUserId(trim($userId));
-            /**seletc the user */
-            $user = $userDataOBj->selectQuery();
-            /**check if there is user found */
-            if (empty($user)) {
-                /**return response to client */
-                echo Responses::json([
-                    'status' => 'failed',
-                    'message' => 'User not found',
-                ], Env::FORBIDDEN_METHOD);
-                return;
-            }
+
             /**setters and getters */
             $userDataOBj->setUserId($user['userId'])
                 ->setPassword($newPassword);
@@ -863,23 +986,31 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Password changed failed',
-
+                    'data' => []
                 ], Env::NOT_ACCEPTABLE);
                 return;
             }
 
             /**setting up email */
             $messageBody = "
-                 <h3>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h3>
-                 <p>You have successfully changed your password at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", if this is not you, please contact our support service as fast as possible</p>
-                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f1f1f1;'> </strong></p>
+                 <div style='width: 100%; position: relative'>
+                   <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
+                   <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
+                      <p>You have successfully changed your password at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", if this is not you, please contact our support service at <contact@kvpnsmart.com> as fast as possible</p>
+                      <p style='text-align: center; margin-top: 10px; padding: 10px'></p>
+                   </section>
+                   <br>
+                   <section style='width: 100%; position: relative; padding: 20px 0; text-align: center; '>
+                      <p>&copy; " . date('Y', time()) . " | " . Env::COMPANY_NAME . "</p>
+                   </section>
+                 </div>
                  ";
 
             /**send email */
-            Messaging::slimezPHPMailMailer(
+            Messaging::sendEmail(
                 sender: Env::SMTP_USERNAME,
                 companyName: Env::COMPANY_NAME,
-                receiver: Security::decryption(Security::insertForwardSlashed($user['email'])),
+                recipients: [Security::decryption(Security::insertForwardSlashed($user['email']))],
                 message: $messageBody,
                 title: 'Password changed successfully'
             );
@@ -890,7 +1021,7 @@ class UserController extends BaseController
             echo Responses::json([
                 'status' => 'success',
                 'message' => 'Password changed successfully',
-
+                'data' => []
             ], Env::SUCCESS_METHOD);
             return;
         }
@@ -898,7 +1029,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only GET method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -910,7 +1041,7 @@ class UserController extends BaseController
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**check if the user is already logged in and then log him out */
-            $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
+            $email = isset($_POST['email']) ? Security::kenProtectFunc($_POST['email']) : '';
             $otpPost = isset($_POST['otp']) ? Security::kenProtectFunc($_POST['otp']) : '';
             /** */
             /** */
@@ -919,13 +1050,21 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
+
+            /**get user from database */
+            $userObj = new UserModel();
+            /**setters and getters */
+            $userObj->setEmail($email);
+            /**get user */
+            $user = $userObj->selectQuery();
             /**get OTP */
             $otpDataObj = new OtpRecordModel();
 
-            $otpDataObj->setUserId($userId);
+            $otpDataObj->setUserId($user['userId']);
 
 
             $dbOtp = $otpDataObj->selectQuery();
@@ -933,39 +1072,43 @@ class UserController extends BaseController
             if (empty($dbOtp)) {
                 /**return response to client */
                 $otpDataObj->setOtpId(Security::genUuid())
-                    ->setUserId($userId)
+                    ->setUserId($user['userId'])
                     ->setType('reset_password')
                     ->setOtpCode($otpPost);
 
                 $otpDataObj->insertQuery();
             } else {
                 /**return response to client */
-                $otpDataObj->setUserId($userId)
+                $otpDataObj->setUserId($user['userId'])
                     ->setType('reset_password')
                     ->setOtpCode($otpPost);
                 /**update the row */
                 $otpDataObj->updateQuery();
             }
 
-            /**get user from database */
-            $userObj = new UserModel();
-            /**setters and getters */
-            $userObj->setUserId($userId);
-            /**get user */
-            $user = $userObj->selectQuery();
+
 
             /**setting up email */
             $messageBody = "
-                 <h3>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h3>
-                 <p>You have requested a password reset at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", if this wasn't you please ignore this message, otherwise use the below otp to proceed</p>
-                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f1f1f1;'>" . $otpPost . " </strong></p>
+                 <div style='width: 100%; position: relative'>
+                   <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
+                   <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
+                      <p>You have requested a password reset at " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", if this wasn't you please ignore this message, otherwise use the below otp to proceed</p>
+                      <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f8f8f8; color: #000000 !important;padding: 5px 30px;'>" . $otpPost . " </strong></p>
+                      
+                   </section>
+                   <br>
+                   <section style='width: 100%; position: relative; padding: 20px 0; text-align: center; '>
+                   <p>&copy; " . date('Y', time()) . " | " . Env::COMPANY_NAME . "</p>
+                   </section>
+                 </div>
                  ";
 
             /**send email */
-            $emailing = Messaging::slimezPHPMailMailer(
+            $emailing = Messaging::sendEmail(
                 sender: Env::SMTP_USERNAME,
                 companyName: Env::COMPANY_NAME,
-                receiver: Security::decryption(Security::insertForwardSlashed($user['email'])),
+                recipients: [Security::decryption(Security::insertForwardSlashed($user['email']))],
                 message: $messageBody,
                 title: "Password reset"
             );
@@ -975,6 +1118,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Error Sending OTP',
+                    'data' => []
                 ], Env::NOT_ACCEPTABLE);
                 return;
             }
@@ -983,7 +1127,7 @@ class UserController extends BaseController
             echo Responses::json([
                 'status' => 'success',
                 'message' => 'OTP sent successfully, please check your email',
-
+                'data' => []
             ], Env::SUCCESS_METHOD);
             return;
         }
@@ -991,7 +1135,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only POST method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -1002,19 +1146,21 @@ class UserController extends BaseController
     {
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            /**check if the user is already logged in and then log him out */
+
             if (!Session::get('user')) {
-                /**return response to client */
+                // User already logged in
                 echo Responses::json([
-                    'status' => 'failed',
-                    'message' => 'You must login to delete your account',
-                ], Env::WRONG_INPUT_METHOD);
+                    'status' => 'loggedout',
+                    'message' => 'Account not logged in, please login',
+                ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
+            
             /**check if the user is already logged in and then log him out */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
             $reason = isset($_POST['reason']) ? Security::kenProtectFunc($_POST['reason']) : '';
             /** */
+           
             /** */
             if (Auth::getBearerToken() != Env::API_TOKEN) {
                 /**return response to client */
@@ -1036,6 +1182,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to perform this operation',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -1081,17 +1228,25 @@ class UserController extends BaseController
 
 
             /**setting up email */
+
             $messageBody = "
-                 <h3>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h3>
-                 <p>Your account with " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", was deleted successfully, we hope to see you back soon</p>
-                 <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:40px,font-weight:bold;background-color: #f1f1f1;'> </strong></p>
+                 <div style='width: 100%; position: relative'>
+                   <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
+                   <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
+                      <p>Your account with " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", was deleted successfully, we hope to see you back soon</p> 
+                   </section>
+                   <br>
+                   <section style='width: 100%; position: relative; padding: 20px 0; text-align: center; '>
+                   <p>&copy; " . date('Y', time()) . " | " . Env::COMPANY_NAME . "</p>
+                   </section>
+                 </div>
                  ";
 
             /**send email */
-            Messaging::slimezPHPMailMailer(
+            Messaging::sendEmail(
                 sender: Env::SMTP_USERNAME,
                 companyName: Env::COMPANY_NAME,
-                receiver: Security::decryption(Security::insertForwardSlashed($user['email'])),
+                recipients: [Security::decryption(Security::insertForwardSlashed($user['email']))],
                 message: $messageBody,
                 title: "Account Deleted"
             );
@@ -1100,7 +1255,7 @@ class UserController extends BaseController
             echo Responses::json([
                 'status' => 'success',
                 'message' => 'Account was deleted successfully',
-
+                'data' => []
             ], Env::SUCCESS_METHOD);
             return;
         }
@@ -1108,7 +1263,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only POST method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 
@@ -1130,11 +1285,11 @@ class UserController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /**check if the user is already logged in and then log him out */
             if (!Session::get('user')) {
-                /**return response to client */
+                // User already logged in
                 echo Responses::json([
-                    'status' => 'failed',
-                    'message' => 'You must login to delete your account',
-                ], Env::WRONG_INPUT_METHOD);
+                    'status' => 'loggedout',
+                    'message' => 'Account not logged in, please login',
+                ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
             /**check if the user is already logged in and then log him out */
@@ -1147,6 +1302,7 @@ class UserController extends BaseController
                 echo Responses::json([
                     'status' => 'failed',
                     'message' => 'Forbidden to access this page',
+                    'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
@@ -1161,7 +1317,7 @@ class UserController extends BaseController
         echo Responses::json([
             'status' => 'failed',
             'message' => 'Wrong resquest method, only POST method is allowed',
-
+            'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
 }
