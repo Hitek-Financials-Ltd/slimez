@@ -41,6 +41,13 @@ Router::post("/user/update_account", [UserController::class, 'updateAccount']);
 Router::post("/user/upload_file", [UserController::class, 'uploadFile']);
 //logout route
 Router::post("/user/signout", [UserController::class, 'signout']);
+
+/**vtu endpoints */
+Router::post('/vtu/airtime',[VtuController::class, 'airtime']);
+Router::post('/vtu/data',[VtuController::class, 'data']);
+Router::post('/vtu/electricity',[VtuController::class, 'electricity']);
+Router::post('/vtu/education',[VtuController::class, 'education']);
+Router::get('/reloadly/balance', [VtuController::class, 'balance']);
 /**
  * vpn subscription endpoints 
  */
@@ -57,3 +64,5 @@ Router::get("/vpn/packages", [VpnController::class, 'packages']);
 /**process payments */
 Router::post("/transactions/events", [PaymentsController::class, 'webhook']);
 Router::post("/transaction/payment", [PaymentsController::class, 'getPayment']);
+
+

@@ -763,7 +763,7 @@ class UserController extends BaseController
             /**update the meta data */
             $metaDataObj->updateQuery();
             /**delete monnfy loginsession */
-            Session::sessDelete("monnify_in");
+            Session::sessDelete("bearer_token");
             /**detsry the session */
             Session::destroy();
             /**response message */

@@ -8,6 +8,7 @@ use Hitek\Slimez\Core\BaseController;
 use Hitek\Slimez\Core\MonnifyPayment;
 use Hitek\Slimez\Core\Responses;
 use Hitek\Slimez\Core\Security;
+use Hitek\Slimez\Core\SeerbitPayment;
 use Hitek\Slimez\Core\Session;
 use Hitek\Slimez\Core\WebhookSampleData;
 
@@ -36,8 +37,8 @@ class PaymentsController extends BaseController{
        $gateWayObj = new ServerSettingsModel();
 
        $gateWayData = $gateWayObj
-                            ->setSettingsId("1")
-                            ->selectQuery();
+                    ->setSettingsId("1")
+                    ->selectQuery();
 
         if(!isset($gateWayData['paymentGateWay'])){
             echo Responses::json([
@@ -85,17 +86,17 @@ class PaymentsController extends BaseController{
             //     );
 
 
-            $mon = $monnify->initializeTransaction(
-                amount: 100.0,
-                customerName: "Usiobaifo Kenneth",
-                customerEmail: "kenneth@yahoo.com",
-                narration: "Monthly subscription",
-                currencyCode: "NGN"
-            );
+            // $mon = $monnify->initializeTransaction(
+            //     amount: 100.0,
+            //     customerName: "Usiobaifo Kenneth",
+            //     customerEmail: "kenneth@yahoo.com",
+            //     narration: "Monthly subscription",
+            //     currencyCode: "NGN"
+            // );
 
 
 
-                echo json_decode($mon);
+                echo json_decode("etuwyeutweyu");
 
                 return;
 
@@ -104,6 +105,10 @@ class PaymentsController extends BaseController{
             
             case 3:
                 /**processe seerbit payment gateway */
+                $seerbitPayment = new SeerbitPayment();
+
+                echo json_encode($seerbitPayment->bearerToken());
+                return;
 
                 break;
             
