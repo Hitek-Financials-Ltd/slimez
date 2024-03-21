@@ -1,0 +1,53 @@
+[{
+    "eventType": "transaction",
+    "eventDate": "2023-10-06 12:56:47",
+    "eventId": "88bf9852405143bd99502c378b316fdd",
+    "data": {
+        "amount": 100,
+        "country": "NG",
+        "creditAccountName": "BusinessName(Customer Name)",
+        "creditAccountNumber": "4018013418",
+        "currency": "NGN",
+        "email": "xyx@email.com",
+        "externalReference": "GT-012",
+        "fullname": "Adamu Bola Ciroma",
+        "gatewayCode": "00",
+        "code": "00",
+        "internalRef": "",
+        "gatewayMessage": "Successful",
+        "mobile": "404",
+        "narration": "",
+        "origin": "",
+        "originatorAccountnumber": "<Account Number>",
+        "originatorName": "<Account Name>",
+        "publicKey": "<PublicKey>",
+        "reference": "GT-012_SBT_9ADPCIV269",
+        "reason": "Successful"
+    }
+},{
+    "eventType": "transaction",
+    "eventDate": "2023-10-06 12:56:47",
+    "eventId": "88bf9852405143bd99502c378b316fdd",
+    "data": {
+        "amount": 100,
+        "country": "NG",
+        "creditAccountName": "BusinessName(Customer Name)",
+        "creditAccountNumber": "4018013418",
+        "currency": "NGN",
+        "email": "xyx@email.com",
+        "externalReference": "GT-012",
+        "fullname": "Adamu Bola Ciroma",
+        "gatewayCode": "00",
+        "code": "00",
+        "internalRef": "",
+        "gatewayMessage": "Successful",
+        "mobile": "404",
+        "narration": "",
+        "origin": "",
+        "originatorAccountnumber": "<Account Number>",
+        "originatorName": "<Account Name>",
+        "publicKey": "<PublicKey>",
+        "reference": "GT-012_SBT_9ADPCIV269",
+        "reason": "Successful"
+    }
+}]

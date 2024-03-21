@@ -1,4 +1,6 @@
 <?php
+ini_set('log_errors', 1);
+ini_set('error_log', '../logs/app_error.log');
 
 /**
  * Author: Oaad Global

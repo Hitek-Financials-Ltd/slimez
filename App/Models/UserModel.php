@@ -19,11 +19,72 @@ class UserModel extends BaseModel
     protected $profileImage;
     protected $timestamp;
     protected $otpCode;
+    // wallet
+    protected $walletId;
+    protected $ledgerBalance;
+    protected $walletBalance;
+    protected $updatedAt;
+    protected $createdAt;
 
-    protected $tableNames = array('users','user_meta','user_personal_info','vpn_subscription','otpRecord');
+    protected $tableNames = array('users','user_meta','user_personal_info','vpn_subscription','otpRecord','wallet');
 
     // Assuming other necessary properties and methods exist...
 
+    public function getWalletId()
+    {
+        return $this->walletId;
+    }
+
+    public function setWalletId($walletId)
+    {
+        $this->walletId = $walletId;
+        return $this;
+    }
+
+    public function getLedgerBalance()
+    {
+        return $this->ledgerBalance;
+    }
+
+    public function setLedgerBalance($ledgerBalance)
+    {
+        $this->ledgerBalance = $ledgerBalance;
+        return $this;
+    }
+
+    public function getWalletBalance()
+    {
+        return $this->walletBalance;
+    }
+
+    public function setWalletBalance($walletBalance)
+    {
+        $this->walletBalance = $walletBalance;
+        return $this;
+    }
+
+    public function getUpdatedAt()
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt($updatedAt)
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
+    public function getCreatedAt()
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt($createdAt)
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+    
     // Getters and Setters
 
     public function getUserId()
@@ -189,11 +250,35 @@ class UserModel extends BaseModel
     public function insertQuery($isTransaction = false)
     {
 
-        $userData = array_filter(['userId' => $this->userId, 'email' => $this->email, 'password' => $this->password]);
-        $insertMetaData = array_filter(['metaId' => Security::genUuid(), 'userId' => $this->userId]);
-        $insertPersonalInfo = array_filter(['pInfoId' => Security::genUuid(),'userId' => $this->userId]);
-        $vpnsubscription = array_filter(['subId' => Security::genUuid(),'userId' => $this->userId]);
-        $otpCode = array_filter(['otpId' => Security::genUuid(),'userId' => $this->userId, 'type'=>'register', 'otpCode' => $this->otpCode]);
+        $userData = array_filter([
+            'userId' => $this->userId, 
+            'email' => $this->email, 
+            'password' => $this->password
+        ]);
+        $insertMetaData = array_filter([
+            'metaId' => Security::genUuid(), 
+            'userId' => $this->userId
+        ]);
+        $insertPersonalInfo = array_filter([
+            'pInfoId' => Security::genUuid(),
+            'userId' => $this->userId
+        ]);
+        $vpnsubscription = array_filter([
+            'subId' => Security::genUuid(),
+            'userId' => $this->userId
+        ]);
+        $otpCode = array_filter([
+            'otpId' => Security::genUuid(),
+            'userId' => $this->userId, 
+            'type'=>'register', 
+            'otpCode' => $this->otpCode
+        ]);
+        $walletData = array_filter([
+            'walletId' => Security::genUuid(),
+            'userId' => $this->userId,
+            'ledger_balance' => $this->ledgerBalance,
+            'wallet_balance' => $this->walletBalance
+        ]);
 
         try {
             /**
@@ -212,7 +297,9 @@ class UserModel extends BaseModel
                         /** */
                         $vpnsubscription,
                         /** */
-                        $otpCode
+                        $otpCode,
+                        /**the wallet */
+                        $walletData
                     ],
                 ];
                 return BaseModel::query()->insertDbTransact($tranData)->save();

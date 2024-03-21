@@ -14,6 +14,7 @@ use Hitek\Slimez\App\Controllers\UserController;
 use Hitek\Slimez\App\Controllers\VtuController;
 use Hitek\Slimez\App\Controllers\VpnController;
 use Hitek\Slimez\Core\Router;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Define routes and their corresponding controllers and methods.
@@ -42,9 +43,16 @@ Router::post("/user/upload_file", [UserController::class, 'uploadFile']);
 //logout route
 Router::post("/user/signout", [UserController::class, 'signout']);
 
+//get the network providers informations
+Router::get("/vtu/country/{countryCode}", [VtuController::class, 'getNetworkOperatorsCountry']);
+Router::get("/vtu/operators/{countryCode}/{phoneNumber}", [VtuController::class, 'getNetworkOperatorByIso']);
+Router::get("/vtu/operator_byid/{operatorId}",[VtuController::class, "getNetworkOperatorByOperatorId"]);
+
 /**vtu endpoints */
 Router::post('/vtu/airtime',[VtuController::class, 'airtime']);
 Router::post('/vtu/data',[VtuController::class, 'data']);
+Router::get('/vtu/status/{transactionId}',[VtuController::class, 'status']);
+Router::get('/vtu/mobiledatails/{countryCode}/{phoneNumber}',[VtuController::class, 'numberDetails']);
 Router::post('/vtu/electricity',[VtuController::class, 'electricity']);
 Router::post('/vtu/education',[VtuController::class, 'education']);
 Router::get('/reloadly/balance', [VtuController::class, 'balance']);
@@ -62,7 +70,13 @@ Router::post("/vpn/configs", [VpnController::class, 'configs']);
 Router::get("/vpn/packages", [VpnController::class, 'packages']);
 
 /**process payments */
+//Router::post("/transactions/events/live", [PaymentsController::class, 'webhook']);
 Router::post("/transactions/events", [PaymentsController::class, 'webhook']);
-Router::post("/transaction/payment", [PaymentsController::class, 'getPayment']);
+Router::post("/payments/process",[PaymentsController::class, 'payment']);
+Router::get("/payments/banks", [PaymentsController::class,"getBanks"]);
+Router::get("/payments/status", [PaymentsController::class,"paymentStatus"]);
+Router::post("/payments/payout", [PaymentsController::class,"payout"]);
+Router::get("/payments/payout/status", [PaymentsController::class,"payoutStatus"]);
+Router::post("/virtual_account/create", [PaymentsController::class, "generateVirtualAccount"]);
 
 

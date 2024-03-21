@@ -11,6 +11,8 @@ class ServerSettingsModel extends BaseModel{
     protected $settingsId;
     protected $paymentGateWay = 1; // Default value for payment gateway
     protected $isOnMaintenance = 0; // Default value for maintenance status
+    protected $vtuVendor = 1;
+    
     protected $tableNames = array('server_settings');
 
     // Getter for settingsId
@@ -26,6 +28,10 @@ class ServerSettingsModel extends BaseModel{
     // Getter for isOnMaintenance
     public function getIsOnMaintenance() {
         return $this->isOnMaintenance;
+    }
+    // Getter for vtuVendor
+    public function getVtuVendor() {
+        return $this->vtuVendor;
     }
 
     // Setter for settingsId
@@ -45,6 +51,14 @@ class ServerSettingsModel extends BaseModel{
         $this->isOnMaintenance = $isOnMaintenance;
         return $this; // Chaining
     }
+
+    // Setter for vtuVendor
+    public function setVtuVendor($vtuVendor) {
+        $this->vtuVendor = $vtuVendor;
+        return $this; // Chaining
+    }
+
+
 
     public function selectQuery(bool $isAll = false)
     {
@@ -69,7 +83,8 @@ class ServerSettingsModel extends BaseModel{
             $insertData = array_filter([
                 'settingsId' => $this->settingsId,
                 'paymentGateWay' => $this->paymentGateWay,
-                'isOnMaintenance' => $this->isOnMaintenance
+                'isOnMaintenance' => $this->isOnMaintenance,
+                'vtuVendor' => $this->vtuVendor
             ]);
 
             return BaseModel::query()->insert($this->tableNames[0], $insertData)->save();
@@ -83,7 +98,8 @@ class ServerSettingsModel extends BaseModel{
         try {
             $updateData = array_filter([
                 'paymentGateWay' => $this->paymentGateWay,
-                'isOnMaintenance' => $this->isOnMaintenance
+                'isOnMaintenance' => $this->isOnMaintenance,
+                'vtuVendor' => $this->vtuVendor
             ]);
 
             return BaseModel::query()->update($this->tableNames[0], $updateData)

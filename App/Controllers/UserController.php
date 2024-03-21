@@ -20,7 +20,15 @@ use Hitek\Slimez\Core\Messaging;
 use Hitek\Slimez\Core\Session;
 use Hitek\Slimez\Core\FileUploader;
 use Exception;
+use Hitek\Slimez\App\Models\ServerSettingsModel;
+use Hitek\Slimez\App\Models\VirtualAccountModel;
+use Hitek\Slimez\App\Models\WalletModel;
 use Hitek\Slimez\Core\Cookie;
+use Hitek\Slimez\Core\LencoPayment;
+use Hitek\Slimez\Core\MonnifyPayment;
+use Hitek\Slimez\Core\PaypalPayment;
+use Hitek\Slimez\Core\PaystackPayment;
+use Hitek\Slimez\Core\SeerbitPayment;
 
 class UserController extends BaseController
 {
@@ -91,6 +99,8 @@ class UserController extends BaseController
                 ->setEmail(Security::kenProtectFunc($email))
                 ->setTimestamp(Security::kenProtectFunc($time))
                 ->setPassword(Security::kenProtectFunc($password))
+                ->setLedgerBalance(0.00)
+                ->setWalletBalance(0.00)
                 ->setOtpCode($otp);
 
             /**
@@ -170,21 +180,12 @@ class UserController extends BaseController
                     title: 'Account Created successfully',
                 );
                 /**return response to client */
-                if ($emailSent) {
-                    echo Responses::json([
-                        'status' => 'success',
-                        'message' => 'User was successfully created',
-                        'data' => [],
-                        'userId' => $userIdGen
-                    ], Env::USER_CREATED);
-                } else {
-                    echo Responses::json([
-                        'status' => 'success',
-                        'message' => 'User was successfully created, email sending error, contact admin',
-                        'data' => [],
-                        'userId' => $userIdGen
-                    ], Env::USER_CREATED);
-                }
+                echo Responses::json([
+                    'status' => 'success',
+                    'message' => 'User was successfully created',
+                    'data' => [],
+                    'userId' => $userIdGen
+                ], Env::USER_CREATED);
                 return;
             } catch (Exception $e) {
                 echo Responses::json([
@@ -261,7 +262,7 @@ class UserController extends BaseController
 
             $getOtpObj = new OtpRecordModel();
 
-            if(empty($userQuery)){
+            if (empty($userQuery)) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
@@ -270,7 +271,7 @@ class UserController extends BaseController
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-            
+
             $getOtpObj->setUserId($userQuery['userId']);
 
             $otpData =  $getOtpObj->selectQuery();
@@ -405,7 +406,7 @@ class UserController extends BaseController
             }
 
             $userObj = new UserModel();
-            
+
 
             /**set the user email and password*/
 
@@ -499,24 +500,24 @@ class UserController extends BaseController
 
             $userMetaData = $metaDataObj->selectQuery();
 
-            if(isset($userMetaData['device']) && $userMetaData['device'] >= Env::NUMBER_OF_DEVICES_ALLOW_PER_USER){
+            if (isset($userMetaData['device']) && $userMetaData['device'] >= Env::NUMBER_OF_DEVICES_ALLOW_PER_USER) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
-                    'message' => 'You have reached the limit number of '.Env::NUMBER_OF_DEVICES_ALLOW_PER_USER.' devices login into your account, please logout from other device and try agin',
+                    'message' => 'You have reached the limit number of ' . Env::NUMBER_OF_DEVICES_ALLOW_PER_USER . ' devices login into your account, please logout from other device and try agin',
                     'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
 
-            if(!empty($userMetaData)){
-                
-                  $metaDataObj->setDevice((int)$userMetaData['device']+1)
-            ->setIsOnline('online');
+            if (!empty($userMetaData)) {
+
+                $metaDataObj->setDevice((int)$userMetaData['device'] + 1)
+                    ->setIsOnline('online');
             }
             /**get the user details */
             $userData = $userObj->selectQuery();
-            
+
             /** */
             $metaDataObj->updateQuery();
             /** */
@@ -584,7 +585,7 @@ class UserController extends BaseController
             /**get post data */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
 
-            $sessionUser = json_decode(Session::get('user'),true);
+            $sessionUser = json_decode(Session::get('user'), true);
             /**check if the email is equal the session email */
             if ($userId != $sessionUser['userId']) {
                 /**return response to client */
@@ -604,6 +605,9 @@ class UserController extends BaseController
             $userVpnFilesObj = new UserVpnFilesModel();
             $vpnConfigsObj = new VpnConfigsModel();
             $vpnSubObj = new VpnSubscriptionModel();
+            $virtualAccount = new VirtualAccountModel();
+            $wallet = new WalletModel();
+
 
             $userObj->setUserId(trim($userId));
             /**
@@ -639,6 +643,25 @@ class UserController extends BaseController
             /*
             *
             */
+            /** 
+             * get the virtual accounts
+             */
+            $virtualAccount->setUserId($userData['userId']);
+            $dataVirtualAccount = $virtualAccount->selectQuery();
+            /**
+             * get the wallet data
+             */
+            $wallet->setUserId($userData['userId']);
+            $walletData = $wallet->selectQuery();
+
+            if (!empty($walletData)) {
+                $userData['wallet'] = $walletData;
+            }
+
+            if (!empty($dataVirtualAccount)) {
+
+                $userData['virtual_account'] = $dataVirtualAccount;
+            }
 
             if (!empty($userVpnFilesObj)) {
                 $vpnConfigsObj->setStatus(1);
@@ -747,23 +770,21 @@ class UserController extends BaseController
              * set logout
              */
             $metaDataObj
-            ->setUserId(trim($userId));
+                ->setUserId(trim($userId));
             /**update online status */
             /** */
             $metaDevices = $metaDataObj->selectQuery();
             // **all the user devices is offline
-            if(isset($metaDevices['device']) && (int)$metaDevices['device'] == 1){
+            if (isset($metaDevices['device']) && (int)$metaDevices['device'] == 1) {
                 $metaDataObj->setIsOnline('offline')
-                ->setDevice(0);
+                    ->setDevice(0);
             }
             /**user device online reduced */
-            if(isset($metaDevices['device']) && (int)$metaDevices['device'] > 1){
-                $metaDataObj->setDevice($metaDevices['device']-1);
+            if (isset($metaDevices['device']) && (int)$metaDevices['device'] > 1) {
+                $metaDataObj->setDevice($metaDevices['device'] - 1);
             }
             /**update the meta data */
             $metaDataObj->updateQuery();
-            /**delete monnfy loginsession */
-            Session::sessDelete("bearer_token");
             /**detsry the session */
             Session::destroy();
             /**response message */
@@ -777,7 +798,7 @@ class UserController extends BaseController
         /**response message */
         echo Responses::json([
             'status' => 'failed',
-            'message' => 'Wrong resquest method, only GET method is allowed',
+            'message' => 'Wrong resquest method, only POST method is allowed',
             'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
@@ -864,7 +885,7 @@ class UserController extends BaseController
             <div style='width: 100%; position: relative'>
               <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
               <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
-                 <p>You requested a ".$otpType." OTP code from " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", below is the otp code</p>
+                 <p>You requested a " . $otpType . " OTP code from " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", below is the otp code</p>
                  <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:80px,font-weight:bold;background-color: #f8f8f8; color: #000000 !important;padding: 5px 30px;'>" . $otpPost . " </strong></p>
                  <p>Please ignore this email if you are not the one that requested this code</p>
                  
@@ -1155,12 +1176,12 @@ class UserController extends BaseController
                 ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
-            
+
             /**check if the user is already logged in and then log him out */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
             $reason = isset($_POST['reason']) ? Security::kenProtectFunc($_POST['reason']) : '';
             /** */
-           
+
             /** */
             if (Auth::getBearerToken() != Env::API_TOKEN) {
                 /**return response to client */
@@ -1210,6 +1231,14 @@ class UserController extends BaseController
             $userObj = new UserModel();
             $userObj->setUserId(trim($userId));
             $userObj->deleteQuery(isSoftDelete: false);
+
+            $wallet = new WalletModel();
+            $wallet->setUserId($userId)->deleteQuery();
+
+            // this is the virtual account number
+            $virtuaAcc = new VirtualAccountModel();
+            $virtuaAcc->setUserId($userId)->deleteQuery();
+
 
             $dateDeleted = new \DateTime();
             $datetime = $dateDeleted->format('Y-m-d H:i:s');
