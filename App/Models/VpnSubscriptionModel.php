@@ -133,7 +133,6 @@ class VpnSubscriptionModel extends BaseModel
             $endDate = (clone $startDate)->add($duration);
 
             $updateData = array_filter([
-                'userId' => $this->userId,
                 'duration' => $this->duration,
                 'subType' => $this->subType,
                 'amount' => $this->amount,

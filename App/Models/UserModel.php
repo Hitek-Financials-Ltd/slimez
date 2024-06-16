@@ -26,7 +26,14 @@ class UserModel extends BaseModel
     protected $updatedAt;
     protected $createdAt;
 
-    protected $tableNames = array('users','user_meta','user_personal_info','vpn_subscription','otpRecord','wallet');
+    protected $virtualId;
+    protected $gatewayProvider;
+    protected $accountNumber;
+    protected $accountName;
+    protected $bankName;
+    protected $accountReference;
+
+    protected $tableNames = array('users','user_meta','user_personal_info','vpn_subscription','otpRecord','wallet', 'virtual_accounts');
 
     // Assuming other necessary properties and methods exist...
 
@@ -103,12 +110,6 @@ class UserModel extends BaseModel
         return $this->otpCode;
     }
 
-    public function setUserId($userId)
-    {
-        $this->userId = $userId;
-        return $this;
-    }
-
     public function getProfileImage()
     {
         return $this->profileImage;
@@ -183,6 +184,78 @@ class UserModel extends BaseModel
     public function setTimestamp($timestamp)
     {
         $this->timestamp = $timestamp;
+        return $this;
+    }
+
+
+    public function getVirtualId()
+    {
+        return $this->virtualId;
+    }
+
+    public function setVirtualId($virtualId): self
+    {
+        $this->virtualId = $virtualId;
+        return $this;
+    }
+    public function setUserId($userId): self
+    {
+        $this->userId = $userId;
+        return $this;
+    }
+
+    public function getGatewayProvider()
+    {
+        return $this->gatewayProvider;
+    }
+
+    public function setGatewayProvider($gatewayProvider): self
+    {
+        $this->gatewayProvider = $gatewayProvider;
+        return $this;
+    }
+
+    public function getAccountNumber()
+    {
+        return $this->accountNumber;
+    }
+
+    public function setAccountNumber($accountNumber): self
+    {
+        $this->accountNumber = $accountNumber;
+        return $this;
+    }
+
+    public function getAccountName()
+    {
+        return $this->accountName;
+    }
+
+    public function setAccountName($accountName): self
+    {
+        $this->accountName = $accountName;
+        return $this;
+    }
+
+    public function getBankName()
+    {
+        return $this->bankName;
+    }
+
+    public function setBankName($bankName): self
+    {
+        $this->bankName = $bankName;
+        return $this;
+    }
+
+    public function getAccountReference()
+    {
+        return $this->accountReference;
+    }
+
+    public function setAccountReference($accountReference): self
+    {
+        $this->accountReference = $accountReference;
         return $this;
     }
 
@@ -280,6 +353,16 @@ class UserModel extends BaseModel
             'wallet_balance' => $this->walletBalance
         ]);
 
+        $virtualAccount = array_filter([
+            'virtualId' => Security::genUuid(),
+            'userId' => $this->userId,
+            'gatewayProvider' => $this->gatewayProvider,
+            'accountNumber' => $this->accountNumber,
+            'accountName' => $this->accountName,
+            'bankName' => $this->bankName,
+            'accountReference' => $this->accountReference,
+        ]);
+
         try {
             /**
              * transaction insert
@@ -299,7 +382,9 @@ class UserModel extends BaseModel
                         /** */
                         $otpCode,
                         /**the wallet */
-                        $walletData
+                        $walletData,
+                        // virtual account
+                        $virtualAccount
                     ],
                 ];
                 return BaseModel::query()->insertDbTransact($tranData)->save();

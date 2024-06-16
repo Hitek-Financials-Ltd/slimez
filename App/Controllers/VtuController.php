@@ -13,23 +13,6 @@ use Hitek\Slimez\Core\Session;
 
 class VtuController extends BaseController
 {
-
-    protected $vtuVendorsGateway;
-
-    function __construct()
-    {
-        /*get the payment gateway been use */
-        // $gateWayObj = new ServerSettingsModel();
-
-        // $gateWayData = $gateWayObj
-        //     ->setSettingsId("1")
-        //     ->selectQuery();
-        // /*use the match statement, similar to the switch statement */
-        // $this->vtuVendorsGateway = match ($gateWayData['vtuVendor']) {
-        //     1 => new ReloadlyVTUandGiftCard(),
-        // };
-    }
-
     /**get network operators country */
     public function getNetworkOperatorsCountry($params = null)
     {
@@ -478,11 +461,11 @@ class VtuController extends BaseController
 
     public function data($params = null)
     {
-        if ($_SERVER['REQUEST_METHOD'] != 'GET') {
+        if ($_SERVER['REQUEST_METHOD'] != 'POST') {
             // Method not allowed
             echo Responses::json([
                 'status' => 'failed',
-                'message' => 'Wrong request method, only GET method is supported for this endpoint',
+                'message' => 'Wrong request method, only POST method is supported for this endpoint',
             ], Env::NOT_ACCEPTABLE); // Assuming 405 is the code for METHOD_NOT_ALLOWED
             return;
         }
@@ -500,6 +483,7 @@ class VtuController extends BaseController
         $reloadly = new ReloadlyVTUandGiftCard();
         /**get operators by country */
         if (isset($params) && $params != null) {
+            
         }
     }
 

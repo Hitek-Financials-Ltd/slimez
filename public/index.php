@@ -15,7 +15,6 @@ require "../vendor/autoload.php";
 use Hitek\Slimez\Configs\Env;
 
 session_start();
-header("Content-Type: application/json");
 // Set the appropriate headers for handling sessions and cookies
 header('Control-Allow-Origin: *');
 header('Access-Control-Allow-Origin: *'); // Adjust this according to your needs

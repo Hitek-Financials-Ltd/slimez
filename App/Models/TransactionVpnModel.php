@@ -26,6 +26,7 @@ class TransactionVpnModel extends BaseModel
     protected $amountExpectedToPay;
     protected $walletBalanceBefore;
     protected $walletBalanceAfter;
+    protected $transactionFee;
 
     protected $tableNames = ['transaction_vpn', 'transaction_record'];
 
@@ -39,6 +40,18 @@ class TransactionVpnModel extends BaseModel
         $this->vpnId = $vpnId;
         return $this;
     }
+
+    public function getTransactionFee()
+    {
+        return $this->transactionFee;
+    }
+
+    public function setTransactionFee($transactionFee): self
+    {
+        $this->transactionFee = $transactionFee;
+        return $this;
+    }
+    
 
     public function getUserId()
     {
@@ -67,7 +80,7 @@ class TransactionVpnModel extends BaseModel
         return $this->transactionRecordId;
     }
 
-    public function setTransactionRecordId($transactionRecordId): self
+    public function setTransactionRecordId($transactionRecordId)
     {
         $this->transactionRecordId = $transactionRecordId;
         return $this;
@@ -229,8 +242,8 @@ class TransactionVpnModel extends BaseModel
                     ->get();
             }
             return BaseModel::query()->select($this->tableNames[0])
-                ->where("vpnId = ? || userId = ? || receiverId = ?", [$this->vpnId, $this->userId])
-                ->get();
+                ->where("vpnId = ? || userId = ? || transactionRecordId = ?", [$this->vpnId, $this->userId, $this->transactionRecordId])
+                ->first();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);
         }
@@ -272,6 +285,7 @@ class TransactionVpnModel extends BaseModel
         'transactionNarration' => $this->transactionNarration,
         'transactionCurrency' => $this->transactionCurrency,
         'amountPaid' => $this->amountPaid,
+        'transactionFee' => $this->transactionFee,
         'amountExpectedToPay' => $this->amountExpectedToPay,
         'walletBalanceBefore' => $this->walletBalanceBefore,
         'walletBalanceAfter' => $this->walletBalanceAfter,
@@ -313,7 +327,7 @@ class TransactionVpnModel extends BaseModel
         try {
             return BaseModel::query()
                 ->update(tableName: $this->tableNames[0], dataValues: $updateData)
-                ->where("vpnId = ? || userId = ? || receiverId = ?", [$this->vpnId, $this->userId])
+                ->where("vpnId = ? || userId = ? || transactionRecordId = ?", [$this->vpnId, $this->userId, $this->transactionRecordId])
                 ->save();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);
@@ -324,7 +338,7 @@ class TransactionVpnModel extends BaseModel
     {
         try {
             return BaseModel::query()->delete($this->tableNames[0])
-               ->where("vpnId = ? || userId = ? || receiverId = ?", [$this->vpnId, $this->userId])->save();
+            ->where("vpnId = ? || userId = ? || transactionRecordId = ?", [$this->vpnId, $this->userId, $this->transactionRecordId])->save();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);
         }

@@ -20,6 +20,7 @@ class TransactionRecordModel extends BaseModel
     protected $amountExpectedToPay;
     protected $walletBalanceBefore;
     protected $walletBalanceAfter;
+    protected $transactionFee;
 
     protected $tableNames = ['transaction_record'];
 
@@ -133,6 +134,18 @@ class TransactionRecordModel extends BaseModel
         return $this;
     }
 
+    public function getTransactionFee()
+    {
+        return $this->transactionFee;
+    }
+
+    public function setTransactionFee($transactionFee): self
+    {
+        $this->transactionFee = $transactionFee;
+        return $this;
+    }
+    
+
     public function getWalletBalanceBefore()
     {
         return $this->walletBalanceBefore;
@@ -167,7 +180,7 @@ class TransactionRecordModel extends BaseModel
             }
             return BaseModel::query()->select($this->tableNames[0])
                 ->where("transId = ? || transactionReference = ? || transactionSessionId = ? ", [$this->transId, $this->transactionReference, $this->transactionSessionId])
-                ->get();
+                ->first();
         } catch (Exception $e) {
             Exceptions::exceptionHandler($e);
         }
@@ -186,6 +199,7 @@ class TransactionRecordModel extends BaseModel
                 'transactionNarration' => $this->transactionNarration,
                 'transactionCurrency' => $this->transactionCurrency,
                 'amountPaid' => $this->amountPaid,
+                'transactionFee' => $this->transactionFee,
                 'amountExpectedToPay' => $this->amountExpectedToPay,
                 'walletBalanceBefore' => $this->walletBalanceBefore,
                 'walletBalanceAfter' => $this->walletBalanceAfter,
@@ -206,6 +220,8 @@ class TransactionRecordModel extends BaseModel
             'transactionNarration' => $this->transactionNarration,
             'transactionCurrency' => $this->transactionCurrency,
             'amountPaid' => $this->amountPaid,
+            'transactionFee' => $this->transactionFee,
+            'transactionSessionId' => $this->transactionSessionId,
             'amountExpectedToPay' => $this->amountExpectedToPay,
             'walletBalanceBefore' => $this->walletBalanceBefore,
             'walletBalanceAfter' => $this->walletBalanceAfter,

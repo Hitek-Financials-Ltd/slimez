@@ -43,6 +43,8 @@ Router::post("/user/upload_file", [UserController::class, 'uploadFile']);
 //logout route
 Router::post("/user/signout", [UserController::class, 'signout']);
 
+Router::get("/user/laws", [UserController::class, 'userLaws']);
+
 //get the network providers informations
 Router::get("/vtu/country/{countryCode}", [VtuController::class, 'getNetworkOperatorsCountry']);
 Router::get("/vtu/operators/{countryCode}/{phoneNumber}", [VtuController::class, 'getNetworkOperatorByIso']);
@@ -68,6 +70,8 @@ Router::post("/vpn/configs", [VpnController::class, 'configs']);
 
 //get packages route
 Router::get("/vpn/packages", [VpnController::class, 'packages']);
+//get rates route
+Router::get("/currency/rates/{currencyCode}", [VpnController::class, 'getRates']);
 
 /**process payments */
 //Router::post("/transactions/events/live", [PaymentsController::class, 'webhook']);
@@ -75,6 +79,7 @@ Router::post("/transactions/events", [PaymentsController::class, 'webhook']);
 Router::post("/payments/process",[PaymentsController::class, 'payment']);
 Router::get("/payments/banks", [PaymentsController::class,"getBanks"]);
 Router::get("/payments/status", [PaymentsController::class,"paymentStatus"]);
+Router::get("/payments/mobile_status", [PaymentsController::class,"mobilePaymentStatus"]);
 Router::post("/payments/payout", [PaymentsController::class,"payout"]);
 Router::get("/payments/payout/status", [PaymentsController::class,"payoutStatus"]);
 Router::post("/virtual_account/create", [PaymentsController::class, "generateVirtualAccount"]);
