@@ -238,7 +238,7 @@ class TransactionVpnModel extends BaseModel
         try {
             if ($isAll) {
                 return BaseModel::query()->select($this->tableNames[0])
-                    ->where("vpnId != ?", ['0'])
+                    ->where("vpnId != ? AND userId = ?", ['67', $this->userId])
                     ->get();
             }
             return BaseModel::query()->select($this->tableNames[0])

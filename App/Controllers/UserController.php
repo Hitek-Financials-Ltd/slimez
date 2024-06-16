@@ -688,7 +688,7 @@ class UserController extends BaseController
             // fetch all the transactions
             $transactionsData = $transactions->selectQuery(isAll: true);
             $transData = null;
-            if(!empty($transactionsData)){
+            if(!empty($transactionsData) && count($transactionsData) >= 1){
                 foreach($transactionsData as $trans){
                     $transRecord->setTransId($trans['transactionRecordId']);
                     $data = null;
@@ -708,12 +708,10 @@ class UserController extends BaseController
                     $transData[] = $data;
                 }
             }
-            // add the transactions to the array
-            if($transData == null){
-                $userData['transactions'] = [];
-            }else{
-                $userData['transactions'] = $transData;
-            }
+            
+
+            $userData['transactions'] = $transData == null ? [] : $transData;
+            
             /**
              * set up the setters and getters
              */
