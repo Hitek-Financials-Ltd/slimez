@@ -14,6 +14,8 @@ namespace Hitek\Slimez\App\Middlewares;
 use Hitek\Slimez\Core\JwtAuth;
 use Hitek\Slimez\Core\Redis;
 use Hitek\Slimez\Configs\Env;
+use Hitek\Slimez\Core\Security;
+
 /**
  * Class Auth
  * Middleware class for authentication.
@@ -137,7 +139,7 @@ class Auth
         $headers = self::getAuthorizationHeader();
         if (!empty($headers)) {
             if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
-                return $matches[1];
+                return Security::decryption($matches[1]);
             }
         }
         return "";

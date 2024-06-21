@@ -20,20 +20,7 @@ use Hitek\Slimez\Core\Messaging;
 use Hitek\Slimez\Core\Session;
 use Hitek\Slimez\Core\FileUploader;
 use Exception;
-use Hitek\Slimez\App\Models\CurrencyRateModel;
-use Hitek\Slimez\App\Models\LawsModel;
-use Hitek\Slimez\App\Models\PackagesModel;
-use Hitek\Slimez\App\Models\ServerSettingsModel;
-use Hitek\Slimez\App\Models\TransactionRecordModel;
-use Hitek\Slimez\App\Models\TransactionVpnModel;
-use Hitek\Slimez\App\Models\VirtualAccountModel;
-use Hitek\Slimez\App\Models\WalletModel;
 use Hitek\Slimez\Core\Cookie;
-use Hitek\Slimez\Core\LencoPayment;
-use Hitek\Slimez\Core\MonnifyPayment;
-use Hitek\Slimez\Core\PaypalPayment;
-use Hitek\Slimez\Core\PaystackPayment;
-use Hitek\Slimez\Core\SeerbitPayment;
 
 class UserController extends BaseController
 {
@@ -104,8 +91,6 @@ class UserController extends BaseController
                 ->setEmail(Security::kenProtectFunc($email))
                 ->setTimestamp(Security::kenProtectFunc($time))
                 ->setPassword(Security::kenProtectFunc($password))
-                ->setLedgerBalance('00.00')
-                ->setWalletBalance('00.00')
                 ->setOtpCode($otp);
 
             /**
@@ -127,45 +112,9 @@ class UserController extends BaseController
                 return;
             }
 
-            /**prepare the post data to be sent to the server */
-            $postParams = [
-                "currencyCode" => "NGN",
-                "countryCode" => "NG",
-                "email" => $userObj->getEmail(),
-                "firstName" => ucfirst(explode("@", $userObj->getEmail())[0]),
-                "lastName" => ucfirst(explode("@", $userObj->getEmail())[0]),
-                "bvn" => Security::OTPGen(11),
-            ];
-            /**set the setters for the virtual account creation model */
-            $userObj->setUserId($userObj->getUserId());
-            /**check if the user exist */
-            // if (!empty($getAccount)) {
-            //     $postParams['gateWayValidate'] = $getAccount['gatewayProvider'];
-            // }
-            $paymentGateWayObject =  new SeerbitPayment();
-            /**process the api call */
-            $responseNew = $paymentGateWayObject->virtualAccount(postData: $postParams);
-
-            /**check the response */
-            if (!$responseNew) {
-                echo Responses::json([
-                    "status" => "failed",
-                    "message" => "Virtual account data already exist",
-                    "data" => []
-                ], Env::NOT_ACCEPTABLE);
-                return;
-            }
-
-            $userObj
-                ->setVirtualId(Security::genUuid())
-                ->setAccountName($responseNew['accountName'])
-                ->setBankName($responseNew['bankName'])
-                ->setAccountNumber($responseNew['accountNumber'])
-                ->setAccountReference($responseNew['accountReference'])
-                ->setGatewayProvider("seerbit");
-
             /**create the account */
             $created = $userObj->insertQuery(true);
+
             /**
              * check if the account inserted successfully
              */
@@ -221,12 +170,21 @@ class UserController extends BaseController
                     title: 'Account Created successfully',
                 );
                 /**return response to client */
-                echo Responses::json([
-                    'status' => 'success',
-                    'message' => 'User was successfully created',
-                    'data' => [],
-                    'userId' => $userIdGen
-                ], Env::USER_CREATED);
+                if ($emailSent) {
+                    echo Responses::json([
+                        'status' => 'success',
+                        'message' => 'User was successfully created',
+                        'data' => [],
+                        'userId' => $userIdGen
+                    ], Env::USER_CREATED);
+                } else {
+                    echo Responses::json([
+                        'status' => 'success',
+                        'message' => 'User was successfully created, email sending error, contact admin',
+                        'data' => [],
+                        'userId' => $userIdGen
+                    ], Env::USER_CREATED);
+                }
                 return;
             } catch (Exception $e) {
                 echo Responses::json([
@@ -296,13 +254,14 @@ class UserController extends BaseController
             $userObj = new UserModel();
 
             /**update the account */
-            $userObj->setEmail($email);
+            $updated = $userObj->setEmail($email)
+                ->setStatus(1);
 
             $userQuery = $userObj->selectQuery();
 
             $getOtpObj = new OtpRecordModel();
 
-            if (empty($userQuery)) {
+            if(empty($userQuery)){
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
@@ -311,14 +270,13 @@ class UserController extends BaseController
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-
+            
             $getOtpObj->setUserId($userQuery['userId']);
 
             $otpData =  $getOtpObj->selectQuery();
 
-
             /**check if the user was otp was found */
-            if (empty($otpData) || $otp != $otpData['otpCode']) {
+            if (empty($otpData)) {
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
@@ -336,12 +294,8 @@ class UserController extends BaseController
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-            /**
-             * update the status of the account
-             */
-            $userObj->setStatus(1);
             /**update otp */
-            $updated = $userObj->updateQuery();
+            $userObj->updateQuery();
             /**
              * 
              */
@@ -451,7 +405,7 @@ class UserController extends BaseController
             }
 
             $userObj = new UserModel();
-
+            
 
             /**set the user email and password*/
 
@@ -545,24 +499,24 @@ class UserController extends BaseController
 
             $userMetaData = $metaDataObj->selectQuery();
 
-            if (isset($userMetaData['device']) && $userMetaData['device'] >= Env::NUMBER_OF_DEVICES_ALLOW_PER_USER) {
+            if(isset($userMetaData['device']) && $userMetaData['device'] >= Env::NUMBER_OF_DEVICES_ALLOW_PER_USER){
                 /**return response to client */
                 echo Responses::json([
                     'status' => 'failed',
-                    'message' => 'You have reached the limit number of ' . Env::NUMBER_OF_DEVICES_ALLOW_PER_USER . ' devices login into your account, please logout from other device and try agin',
+                    'message' => 'You have reached the limit number of '.Env::NUMBER_OF_DEVICES_ALLOW_PER_USER.' devices login into your account, please logout from other device and try agin',
                     'data' => []
                 ], Env::FORBIDDEN_METHOD);
                 return;
             }
 
-            if (!empty($userMetaData)) {
-
-                $metaDataObj->setDevice((int)$userMetaData['device'] + 1)
-                    ->setIsOnline('online');
+            if(!empty($userMetaData)){
+                
+                  $metaDataObj->setDevice((int)$userMetaData['device']+1)
+            ->setIsOnline('online');
             }
             /**get the user details */
             $userData = $userObj->selectQuery();
-
+            
             /** */
             $metaDataObj->updateQuery();
             /** */
@@ -630,7 +584,7 @@ class UserController extends BaseController
             /**get post data */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
 
-            $sessionUser = json_decode(Session::get('user'), true);
+            $sessionUser = json_decode(Session::get('user'),true);
             /**check if the email is equal the session email */
             if ($userId != $sessionUser['userId']) {
                 /**return response to client */
@@ -650,24 +604,6 @@ class UserController extends BaseController
             $userVpnFilesObj = new UserVpnFilesModel();
             $vpnConfigsObj = new VpnConfigsModel();
             $vpnSubObj = new VpnSubscriptionModel();
-            $virtualAccount = new VirtualAccountModel();
-            $wallet = new WalletModel();
-            $currencyRate = new CurrencyRateModel();
-
-            $transactions = new TransactionVpnModel();
-
-            $transRecord = new TransactionRecordModel();
-
-            $packages = new PackagesModel();
-
-            $packs = $packages->setStatus(1)->selectQuery(true);
-
-            // get the transactions
-            $transactions->setUserId(trim($userId));
-            
-            
-            
-
 
             $userObj->setUserId(trim($userId));
             /**
@@ -684,34 +620,6 @@ class UserController extends BaseController
                 ], Env::WRONG_INPUT_METHOD);
                 return;
             }
-
-            // fetch all the transactions
-            $transactionsData = $transactions->selectQuery(isAll: true);
-            $transData = null;
-            if(!empty($transactionsData) && count($transactionsData) >= 1){
-                foreach($transactionsData as $trans){
-                    $transRecord->setTransId($trans['transactionRecordId']);
-                    $data = null;
-                    $transactionRecordData = $transRecord->selectQuery();
-                    $data['transactionId'] =  $transactionRecordData['transId'];
-                    $data['transactionStatus'] =  $transactionRecordData['transactionStatus'];
-                    $data['transactionReference'] =  $transactionRecordData['transactionReference'];
-                    $data['transactionTypeId'] =  $transactionRecordData['transactionTypeId'];
-                    $data['transactionType'] = $transactionRecordData['transactionType'];
-                    $data['transactionSessionId'] =  $transactionRecordData['transactionSessionId'];
-                    $data['transactionNarration'] =  $transactionRecordData['transactionNarration'];
-                    $data['transactionCurrency'] =  $transactionRecordData['transactionCurrency'];
-                    $data['amountPaid'] =  $transactionRecordData['amountPaid'];
-                    $data['bonusWallet'] =  $transactionRecordData['walletBalanceAfter'];
-                    $data['duration'] =  $trans['duration'];
-                    $data['transactionDate'] =  $trans['updateAt'];
-                    $transData[] = $data;
-                }
-            }
-            
-
-            $userData['transactions'] = $transData == null ? [] : $transData;
-            
             /**
              * set up the setters and getters
              */
@@ -727,66 +635,10 @@ class UserController extends BaseController
             /*
             * 
             */
-            $currencyRate->setCountry('all');
-            $currencyData = $currencyRate->selectQuery(isSelectAll: true);
-            if (!empty($currencyData)) {
-                $data = null;
-                foreach($currencyData as $rates){
-                    if($rates['country'] == "USD"){
-                        $data[] = [
-                            'id' => $rates['id'],
-                            'country' => $rates['country'],
-                            'rate' => '1.00',
-                            'status' => $rates['status'],
-                            'updateAt' => $rates['updateAt']
-                        ];
-                    }else{
-                        $data[] = [
-                            'id' => $rates['id'],
-                            'country' => $rates['country'],
-                            'rate' => $rates['rate'],
-                            'status' => $rates['status'],
-                            'updateAt' => $rates['updateAt']
-                        ];
-                    } 
-                    
-                }
-
-                $userData['rates'] = $data;
-                
-            }
-
-            
-            /*
-            * 
-            */
             $vpnSubObj->setUserId($userData['userId']);
             /*
             *
             */
-            /** 
-             * get the virtual accounts
-             */
-            $virtualAccount->setUserId($userData['userId']);
-            $dataVirtualAccount = $virtualAccount->selectQuery();
-            /**
-             * get the wallet data
-             */
-            $wallet->setUserId($userData['userId']);
-            $walletData = $wallet->selectQuery();
-
-            if (!empty($walletData)) {
-                $userData['wallet'] = $walletData;
-            }
-
-            if (!empty($dataVirtualAccount)) {
-
-                $userData['virtual_account'] = $dataVirtualAccount;
-            }
-
-            if (!empty($packs)) {
-                $userData['packages'] = $packs;
-            }
 
             if (!empty($userVpnFilesObj)) {
                 $vpnConfigsObj->setStatus(1);
@@ -800,15 +652,7 @@ class UserController extends BaseController
              * 
              */
             $vpnSub = $vpnSubObj->selectQuery();
-
-            $now = new \DateTime();
-            $time = $now->format('Y-m-d H:i:s');
-            // Convert the formatted string back to a DateTime object to ensure accuracy
-            $dateTime = new \DateTime($time);
-            // Get the Unix timestamp
-            $timestamp = $dateTime->getTimestamp();
             /**
-             * 
              * 
              */
             $userVpnFiles = $userVpnFilesObj->selectQuery();
@@ -829,14 +673,6 @@ class UserController extends BaseController
             }
             if (!empty($vpnSub)) {
                 unset($vpnSub['userId']);
-                $endDateTimestamp = new \DateTime(!empty($vpnSub['endDate']) ? $vpnSub['endDate'] : "00000000");
-
-                $endDateTimestampInt = $endDateTimestamp->getTimestamp();
-                /**calculate the number of days left */
-                $daysLeft = floor(($endDateTimestampInt - $timestamp) / 86400);
-
-                $vpnSub['daysLeft'] = $daysLeft;
-
                 $userData['vpn_sub'] = $vpnSub;
             }
             if (!empty($meta)) {
@@ -911,21 +747,23 @@ class UserController extends BaseController
              * set logout
              */
             $metaDataObj
-                ->setUserId(trim($userId));
+            ->setUserId(trim($userId));
             /**update online status */
             /** */
             $metaDevices = $metaDataObj->selectQuery();
             // **all the user devices is offline
-            if (isset($metaDevices['device']) && (int)$metaDevices['device'] == 1) {
+            if(isset($metaDevices['device']) && (int)$metaDevices['device'] == 1){
                 $metaDataObj->setIsOnline('offline')
-                    ->setDevice(0);
+                ->setDevice(0);
             }
             /**user device online reduced */
-            if (isset($metaDevices['device']) && (int)$metaDevices['device'] > 1) {
-                $metaDataObj->setDevice($metaDevices['device'] - 1);
+            if(isset($metaDevices['device']) && (int)$metaDevices['device'] > 1){
+                $metaDataObj->setDevice($metaDevices['device']-1);
             }
             /**update the meta data */
             $metaDataObj->updateQuery();
+            /**delete monnfy loginsession */
+            Session::sessDelete("bearer_token");
             /**detsry the session */
             Session::destroy();
             /**response message */
@@ -939,7 +777,7 @@ class UserController extends BaseController
         /**response message */
         echo Responses::json([
             'status' => 'failed',
-            'message' => 'Wrong resquest method, only POST method is allowed',
+            'message' => 'Wrong resquest method, only GET method is allowed',
             'data' => []
         ], Env::METHOD_NOT_ALLOWED);
     }
@@ -1026,7 +864,7 @@ class UserController extends BaseController
             <div style='width: 100%; position: relative'>
               <section style='width: 100%; background-color: #ffffff; padding: 20px; position: relative'>
               <h2 style='color: #000000; padding: 5px 0'>Hi " . ucfirst(explode("@", Security::decryption(Security::insertForwardSlashed($user['email'])))[0]) . "</h2>
-                 <p>You requested a " . $otpType . " OTP code from " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", below is the otp code</p>
+                 <p>You requested a ".$otpType." OTP code from " . ucfirst(strtolower(Env::SYSTEM_NAME)) . ", below is the otp code</p>
                  <p style='text-align: center; margin-top: 10px; padding: 10px'><strong style='font-size:80px,font-weight:bold;background-color: #f8f8f8; color: #000000 !important;padding: 5px 30px;'>" . $otpPost . " </strong></p>
                  <p>Please ignore this email if you are not the one that requested this code</p>
                  
@@ -1317,12 +1155,12 @@ class UserController extends BaseController
                 ], Env::NOT_ACCEPTABLE); // Assuming 400 is the code for WRONG_INPUT_METHOD
                 return;
             }
-
+            
             /**check if the user is already logged in and then log him out */
             $userId = isset($_POST['userId']) ? Security::kenProtectFunc($_POST['userId']) : '';
             $reason = isset($_POST['reason']) ? Security::kenProtectFunc($_POST['reason']) : '';
             /** */
-
+           
             /** */
             if (Auth::getBearerToken() != Env::API_TOKEN) {
                 /**return response to client */
@@ -1372,14 +1210,6 @@ class UserController extends BaseController
             $userObj = new UserModel();
             $userObj->setUserId(trim($userId));
             $userObj->deleteQuery(isSoftDelete: false);
-
-            $wallet = new WalletModel();
-            $wallet->setUserId($userId)->deleteQuery();
-
-            // this is the virtual account number
-            $virtuaAcc = new VirtualAccountModel();
-            $virtuaAcc->setUserId($userId)->deleteQuery();
-
 
             $dateDeleted = new \DateTime();
             $datetime = $dateDeleted->format('Y-m-d H:i:s');
@@ -1489,33 +1319,5 @@ class UserController extends BaseController
             'message' => 'Wrong resquest method, only POST method is allowed',
             'data' => []
         ], Env::METHOD_NOT_ALLOWED);
-    }
-
-
-    /**user privacy pulicies */
-    public function userLaws($params = null)
-    {
-        if ($_SERVER['REQUEST_METHOD'] != 'GET') {
-            /**response message */
-            echo Responses::json([
-                'status' => 'failed',
-                'message' => 'Wrong resquest method, only GET method is allowed',
-                'data' => []
-            ], Env::METHOD_NOT_ALLOWED);
-        }
-        $policy = new LawsModel();
-        $policyData = $policy->setLawStatus(1)->selectQuery();
-        if (empty($policyData)) {
-            echo Responses::json([
-                'lawsId' => "",
-                'userAgreement' => "Content under review",
-                'privacyPolicy' => "Content under review",
-                'lawStatus' => "0"
-            ]);
-            return;
-        }
-        $policyData['lawStatus'] = (string)$policyData['lawStatus'];
-        echo Responses::json($policyData);
-        return;
     }
 }
