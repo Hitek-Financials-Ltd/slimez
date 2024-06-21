@@ -20,6 +20,12 @@ use Hitek\Slimez\Core\Messaging;
 use Hitek\Slimez\Core\Session;
 use Hitek\Slimez\Core\FileUploader;
 use Exception;
+use Hitek\Slimez\App\Models\CurrencyRateModel;
+use Hitek\Slimez\App\Models\PackagesModel;
+use Hitek\Slimez\App\Models\TransactionRecordModel;
+use Hitek\Slimez\App\Models\TransactionVpnModel;
+use Hitek\Slimez\App\Models\VirtualAccountModel;
+use Hitek\Slimez\App\Models\WalletModel;
 use Hitek\Slimez\Core\Cookie;
 
 class UserController extends BaseController
@@ -605,6 +611,20 @@ class UserController extends BaseController
             $vpnConfigsObj = new VpnConfigsModel();
             $vpnSubObj = new VpnSubscriptionModel();
 
+
+            $virtualAccount = new VirtualAccountModel();
+            $wallet = new WalletModel();
+            $currencyRate = new CurrencyRateModel();
+
+             $transactions = new TransactionVpnModel();
+
+            $transRecord = new TransactionRecordModel();
+
+            $packages = new PackagesModel();
+
+            $packs = $packages->setStatus(1)->selectQuery(true);
+            
+
             $userObj->setUserId(trim($userId));
             /**
              * 
@@ -619,6 +639,91 @@ class UserController extends BaseController
                     'data' => []
                 ], Env::WRONG_INPUT_METHOD);
                 return;
+            }
+
+             /*
+            * 
+            */
+            $currencyRate->setCountry('all');
+            $currencyData = $currencyRate->selectQuery(isSelectAll: true);
+            if (!empty($currencyData)) {
+                $data = null;
+                foreach ($currencyData as $rates) {
+                    if ($rates['country'] == "USD") {
+                        $data[] = [
+                            'id' => $rates['id'],
+                            'country' => $rates['country'],
+                            'rate' => '1.00',
+                            'status' => $rates['status'],
+                            'updateAt' => $rates['updateAt']
+                        ];
+                    } else {
+                        $data[] = [
+                            'id' => $rates['id'],
+                            'country' => $rates['country'],
+                            'rate' => $rates['rate'],
+                            'status' => $rates['status'],
+                            'updateAt' => $rates['updateAt']
+                        ];
+                    }
+                }
+
+                $userData['rates'] = $data;
+            }
+
+            // get the transactions
+            $transactions->setUserId(trim($userId));
+
+            // fetch all the transactions
+            $transactionsData = $transactions->selectQuery(isAll: true);
+            $transData = null;
+            if(!empty($transactionsData) && count($transactionsData) >= 1){
+                foreach($transactionsData as $trans){
+                    $transRecord->setTransId($trans['transactionRecordId']);
+                    $data = null;
+                    $transactionRecordData = $transRecord->selectQuery();
+                    $data['transactionId'] =  $transactionRecordData['transId'];
+                    $data['transactionStatus'] =  $transactionRecordData['transactionStatus'];
+                    $data['transactionReference'] =  $transactionRecordData['transactionReference'];
+                    $data['transactionTypeId'] =  $transactionRecordData['transactionTypeId'];
+                    $data['transactionType'] = $transactionRecordData['transactionType'];
+                    $data['transactionSessionId'] =  $transactionRecordData['transactionSessionId'];
+                    $data['transactionNarration'] =  $transactionRecordData['transactionNarration'];
+                    $data['transactionCurrency'] =  $transactionRecordData['transactionCurrency'];
+                    $data['amountPaid'] =  $transactionRecordData['amountPaid'];
+                    $data['bonusWallet'] =  $transactionRecordData['walletBalanceAfter'];
+                    $data['duration'] =  $trans['duration'];
+                    $data['transactionDate'] =  $trans['updateAt'];
+                    $transData[] = $data;
+                }
+            }
+
+
+            $userData['transactions'] = $transData == null ? [] : $transData;
+
+            /**
+             * get the wallet data
+             */
+            $wallet->setUserId($userData['userId']);
+            $walletData = $wallet->selectQuery();
+
+            if (!empty($walletData)) {
+                $userData['wallet'] = $walletData;
+            }
+
+            /** 
+             * get the virtual accounts
+             */
+            $virtualAccount->setUserId($userData['userId']);
+            $dataVirtualAccount = $virtualAccount->selectQuery();
+             if (!empty($dataVirtualAccount)) {
+
+                $userData['virtual_account'] = $dataVirtualAccount;
+            }
+
+            // 
+            if (!empty($packs)) {
+                $userData['packages'] = $packs;
             }
             /**
              * set up the setters and getters
@@ -660,6 +765,13 @@ class UserController extends BaseController
              * 
              */
             $personal = $personalObj->selectQuery();
+            
+            $now = new \DateTime();
+            $time = $now->format('Y-m-d H:i:s');
+            // Convert the formatted string back to a DateTime object to ensure accuracy
+            $dateTime = new \DateTime($time);
+            // Get the Unix timestamp
+            $timestamp = $dateTime->getTimestamp();
             /**
              * unset the user id from the array
              */
@@ -673,6 +785,14 @@ class UserController extends BaseController
             }
             if (!empty($vpnSub)) {
                 unset($vpnSub['userId']);
+                $endDateTimestamp = new \DateTime(!empty($vpnSub['endDate']) ? $vpnSub['endDate'] : "00000000");
+
+                $endDateTimestampInt = $endDateTimestamp->getTimestamp();
+                /**calculate the number of days left */
+                $daysLeft = floor(($endDateTimestampInt - $timestamp) / 86400);
+
+                $vpnSub['daysLeft'] = $daysLeft;
+
                 $userData['vpn_sub'] = $vpnSub;
             }
             if (!empty($meta)) {
@@ -687,7 +807,6 @@ class UserController extends BaseController
             $userData['username'] = (string)Security::decryption(Security::insertForwardSlashed($userData['username']));
 
             $userData['profileImage'] = (string)$userData['profileImage'];
-
             echo Responses::json($userData);
             return;
         }
